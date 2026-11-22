@@ -105,11 +105,21 @@ function exportReviewsPdf(){
  w.document.close();
 }
 
+
+function updateLiveClock(){
+ const now=new Date(),time=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).split(':');
+ const h=document.querySelector('[data-clock-hours]'),m=document.querySelector('[data-clock-minutes]'),s=document.querySelector('[data-clock-seconds]');
+ if(!h||!m||!s)return;
+ h.textContent=time[0];m.textContent=time[1];
+ if(s.textContent!==time[2]){s.textContent=time[2];s.classList.remove('clock-tick');void s.offsetWidth;s.classList.add('clock-tick');}
+}
+updateLiveClock();setInterval(updateLiveClock,250);
+
 function render(){
  const d=today(),stats=dayStats(d),v=view;
  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
  const titles={today:'اليوم',week:'الأسبوع',month:'الشهر',log:'سجل الإنجاز',analytics:'الإحصائيات',reviews:'المراجعة',settings:'الإعدادات'};
- let html='<header class="page-head"><div><div class="eyebrow">مساحة تطويرك الشخصي</div><h1>'+titles[v]+'</h1><div class="muted">'+fmt(d)+'</div></div><button class="btn btn-light" id="signout">تسجيل الخروج</button></header>';
+ let html='<header class="page-head"><div><div class="eyebrow">مساحة تطويرك الشخصي</div><h1>'+titles[v]+'</h1><div class="head-meta"><span class="muted">'+fmt(d)+'</span><span class="live-clock" aria-label="الوقت الحالي"><span class="clock-live-dot"></span><span class="clock-digits"><span data-clock-hours>00</span><span class="clock-separator">:</span><span data-clock-minutes>00</span><span class="clock-separator">:</span><span class="clock-seconds" data-clock-seconds>00</span></span><span class="clock-label">الآن</span></span></div></div><button class="btn btn-light" id="signout">تسجيل الخروج</button></header>';
  if(v==='today'){
   const tasks=tasksFor(d);
   html+='<section class="stats"><div class="stat"><small>نسبة إنجاز اليوم</small><strong>'+stats.pct+'<small>%</small></strong><div class="bar"><i style="width:'+stats.pct+'%"></i></div></div><div class="stat"><small>النقاط المكتملة / المستهدفة</small><strong>'+stats.done+' <small>/ '+stats.total+'</small></strong></div><div class="stat"><small>المهام المكتملة</small><strong>'+stats.completed+' <small>/ '+stats.count+'</small></strong></div></section><div class="layout"><section class="panel"><h2>مهام اليوم</h2><form class="task-form" id="add-form"><input id="task-name" placeholder="ما المهمة التي تريد إنجازها؟" required maxlength="200"><select id="task-points"><option value="1">سهلة · 1 نقطة</option><option value="2">متوسطة · 2 نقطتان</option><option value="3">صعبة · 3 نقاط</option></select><button class="btn">إضافة</button></form><div>'+ (tasks.length?tasks.map(t=>'<div class="task '+(t.is_completed?'done':'')+'"><input type="checkbox" data-check="'+t.id+'" '+(t.is_completed?'checked':'')+'><span>'+esc(t.title)+' <small class="muted">· '+t.difficulty+' نقاط</small></span><button data-delete="'+t.id+'" aria-label="حذف">×</button></div>').join(''):'<div class="empty">أضف مهامك لهذا اليوم، وسيُحسب الهدف تلقائيًا من مجموع نقاطها.</div>')+'</div></section><section class="panel"><h2>مؤشر التقدم</h2><div class="score">'+stats.pct+'<small class="muted" style="font-size:18px">%</small></div><div class="bar"><i style="width:'+stats.pct+'%"></i></div><p class="muted">الهدف اليومي = مجموع نقاط جميع مهام اليوم. كلما أكملت مهمة ارتفعت نسبة تقدمك.</p><div class="day-row"><span>النقاط المتبقية</span><b>'+Math.max(0,stats.total-stats.done)+'</b></div></section></div>';
