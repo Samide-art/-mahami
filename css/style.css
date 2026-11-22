@@ -52,3 +52,17 @@
 .btn-small{padding:7px 10px;font-size:12px}.btn-danger{background:#f8eaea;color:#9f3333}
 @media(max-width:900px){.review-layout{grid-template-columns:1fr}}
 @media(max-width:520px){.review-item{align-items:flex-start;flex-direction:column}.review-item-actions{align-self:flex-start}.review-editor-footer{align-items:flex-start;flex-direction:column}.review-editor-footer .btn{width:100%}}
+
+/* Live clock beside today's date */
+.head-meta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:8px}
+.live-clock{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid #e8e8e3;border-radius:12px;background:linear-gradient(135deg,#fff 0%,#f4f4f0 100%);box-shadow:0 3px 12px rgba(20,20,18,.045);direction:ltr;font-variant-numeric:tabular-nums}
+.clock-live-dot{width:7px;height:7px;border-radius:50%;background:#6670df;box-shadow:0 0 0 3px rgba(102,112,223,.13);animation:clock-breathe 2s ease-in-out infinite}
+.clock-digits{display:inline-flex;align-items:center;gap:2px;color:#20211f;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:.4px}
+.clock-separator{color:#a2a29b;animation:clock-blink 1s steps(2,end) infinite}
+.clock-seconds{display:inline-block;min-width:20px;text-align:center;color:#5963cf}
+.clock-seconds.clock-tick{animation:clock-second-change .32s ease-out}
+.clock-label{font-family:"Cairo",sans-serif;font-size:10px;color:#85857f;direction:rtl}
+@keyframes clock-breathe{0%,100%{box-shadow:0 0 0 3px rgba(102,112,223,.12);opacity:1}50%{box-shadow:0 0 0 6px rgba(102,112,223,.04);opacity:.72}}
+@keyframes clock-blink{50%{opacity:.35}}
+@keyframes clock-second-change{0%{transform:translateY(-4px);opacity:.35}100%{transform:translateY(0);opacity:1}}
+@media(max-width:760px){.head-meta{gap:8px}.live-clock{padding:6px 9px}.clock-digits{font-size:14px}}
