@@ -24,7 +24,7 @@ async function handleAuth(e){e.preventDefault();const email=$('#auth-email').val
 $('#auth-form').addEventListener('submit',handleAuth);
 $('#auth-toggle').addEventListener('click',()=>{authMode=authMode==='login'?'signup':'login';showAuth()});
 async function loadData(){
- const [a,b]=await Promise.all([
+ const [a,b,c]=await Promise.all([
   supabase.from('mahami_entries').select('*').order('entry_date',{ascending:false}).order('created_at',{ascending:true}),
   supabase.from('mahami_settings').select('week_start,daily_target').maybeSingle(),
   supabase.from('mahami_reviews').select('*').order('review_date',{ascending:false}).order('updated_at',{ascending:false})
