@@ -32,3 +32,23 @@
 @media(max-width:900px){.analytics-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.analytics-grid{grid-template-columns:1fr}.export-panel{align-items:stretch;flex-direction:column}.export-actions .btn{flex:1}.nav-item{font-size:9px;padding-left:0;padding-right:0}}
 @media print{.side,.page-head button,.export-panel{display:none!important}.main{width:100%;padding:0}.panel,.stat{break-inside:avoid;box-shadow:none}}
+
+/* Personal review notebook */
+.review-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:16px;align-items:start}
+.review-editor-head,.review-list-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+.review-editor-head h2,.review-list-head h2{margin:0 0 5px}
+.review-editor-head p,.review-list-head p{margin:0;font-size:13px}
+.review-editor form{display:grid;gap:14px}
+.review-editor .field{display:grid;gap:7px;border:0;padding:0;font-size:13px;color:#555}
+.review-editor input,.review-editor textarea{width:100%;background:#fcfcfb;border:1px solid #e6e6e0;border-radius:12px;padding:12px 14px;color:#222;line-height:1.9}
+.review-editor textarea{resize:vertical;min-height:230px;white-space:pre-wrap}
+.review-editor-footer{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.review-item{padding:14px 0;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.review-item:last-child{border:0}.review-item-main{min-width:0;flex:1}
+.review-item-main strong{display:block;font-size:14px}
+.review-item-main time,.review-item-main p{font-size:12px;color:#888}
+.review-item-main p{margin:5px 0 0;line-height:1.7;overflow-wrap:anywhere}
+.review-item-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-small{padding:7px 10px;font-size:12px}.btn-danger{background:#f8eaea;color:#9f3333}
+@media(max-width:900px){.review-layout{grid-template-columns:1fr}}
+@media(max-width:520px){.review-item{align-items:flex-start;flex-direction:column}.review-item-actions{align-self:flex-start}.review-editor-footer{align-items:flex-start;flex-direction:column}.review-editor-footer .btn{width:100%}}
