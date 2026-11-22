@@ -2,7 +2,7 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 const { createClient } = window.supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = s => document.querySelector(s);
-let user = null, entries = [], settings = { week_start: 0, daily_target: 10 }, authMode = 'login', view = 'today';
+let user = null, entries = [], reviews = [], editingReviewId = null, settings = { week_start: 0, daily_target: 10 }, authMode = 'login', view = 'today';
 const dateKey = d => [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
 const today = () => dateKey(new Date());
 const shiftDate = (date, days) => { const d = new Date(date+'T12:00:00'); d.setDate(d.getDate()+days); return dateKey(d); };
@@ -26,10 +26,11 @@ $('#auth-toggle').addEventListener('click',()=>{authMode=authMode==='login'?'sig
 async function loadData(){
  const [a,b]=await Promise.all([
   supabase.from('mahami_entries').select('*').order('entry_date',{ascending:false}).order('created_at',{ascending:true}),
-  supabase.from('mahami_settings').select('week_start,daily_target').maybeSingle()
+  supabase.from('mahami_settings').select('week_start,daily_target').maybeSingle(),
+  supabase.from('mahami_reviews').select('*').order('review_date',{ascending:false}).order('updated_at',{ascending:false})
  ]);
- if(a.error)throw a.error; if(b.error)throw b.error;
- entries=a.data||[]; settings={week_start:Number(b.data?.week_start??0),daily_target:Number(b.data?.daily_target??10)};
+ if(a.error)throw a.error; if(b.error)throw b.error; if(c.error)throw c.error;
+ entries=a.data||[]; settings={week_start:Number(b.data?.week_start??0),daily_target:Number(b.data?.daily_target??10)}; reviews=c.data||[];
 }
 async function startApp(){try{await loadData();$('#auth').hidden=true;$('#app').hidden=false;render();}catch(e){showAuth();authMessage('تعذر تحميل بياناتك: '+e.message,true)}}
 supabase.auth.onAuthStateChange(async(_event,session)=>{user=session?.user||null;if(user)await startApp();else showAuth();});
@@ -83,10 +84,26 @@ function renderAnalytics(){
  '<section class="panel analytics-panel"><h2>ملاحظات وتحليل الأداء</h2>'+insightsMarkup(cur,prev,days)+'</section>'+
  '<section class="export-panel"><div><h2>تصدير تقاريرك</h2><p class="muted">احتفظ بنسخة من سجل المهام أو اطبع تقريرًا منسقًا لآخر 30 يومًا بصيغة PDF.</p></div><div class="export-actions"><button class="btn btn-light" id="export-csv">تصدير CSV</button><button class="btn" id="export-pdf">تصدير PDF</button></div></section>';
 }
+
+function reviewDateLabel(d){return new Date(d+'T12:00:00').toLocaleDateString('ar-DZ',{day:'numeric',month:'long',year:'numeric'});}
+function renderReviews(){
+ const selected=editingReviewId?reviews.find(r=>r.id===editingReviewId):null;
+ const date=selected?.review_date||today(),title=selected?.title||'',content=selected?.content||'';
+ const list=reviews.length?reviews.map(r=>'<article class="review-item"><div class="review-item-main"><strong>'+esc(r.title)+'</strong><time>'+esc(reviewDateLabel(r.review_date))+'</time><p>'+esc((r.content||'').replace(/\\s+/g,' ').slice(0,150))+(r.content?.length>150?'…':'')+'</p></div><div class="review-item-actions"><button class="btn btn-light btn-small" data-review-edit="'+r.id+'">فتح</button><button class="btn btn-danger btn-small" data-review-delete="'+r.id+'">حذف</button></div></article>').join(''):'<div class="empty">لا توجد ملاحظات بعد. ابدأ أول مراجعة واكتب ما تعلمته أو ما تريد تحسينه.</div>';
+ return '<div class="review-layout"><section class="panel review-editor"><div class="review-editor-head"><div><h2>'+(selected?'تعديل المراجعة':'مراجعة جديدة')+'</h2><p class="muted">دوّن أفكارك، ملاحظاتك، وما تريد تذكره لاحقًا.</p></div>'+(selected?'<button class="btn btn-light btn-small" id="review-new">مراجعة جديدة</button>':'')+'</div><form id="review-form"><label class="field"><span>عنوان المراجعة</span><input id="review-title" maxlength="180" required placeholder="مثلاً: مراجعة يوم الأحد" value="'+esc(title)+'"></label><label class="field"><span>التاريخ</span><input id="review-date" type="date" required value="'+esc(date)+'"></label><label class="field"><span>ملاحظاتك وتدويناتك</span><textarea id="review-content" maxlength="30000" rows="12" placeholder="اكتب ما أنجزته، ما تعلمته، الأفكار التي تريد الاحتفاظ بها، وما ستعمل عليه لاحقًا...">'+esc(content)+'</textarea></label><div class="review-editor-footer"><span class="muted" id="review-count">'+content.length+' / 30000 حرف</span><button class="btn" type="submit">'+(selected?'حفظ التعديلات':'حفظ المراجعة')+'</button></div></form></section><section class="panel review-list"><div class="review-list-head"><div><h2>دفتر المراجعات</h2><p class="muted">'+reviews.length+' تدوينة محفوظة</p></div><button class="btn btn-light btn-small" id="reviews-pdf">تصدير PDF</button></div>'+list+'</section></div>';
+}
+function exportReviewsPdf(){
+ if(!reviews.length){toast('لا توجد تدوينات لتصديرها بعد.');return;}
+ const content=reviews.map(r=>'<article><h2>'+esc(r.title)+'</h2><p class="date">'+esc(reviewDateLabel(r.review_date))+'</p><div class="note">'+esc(r.content||'').replace(/\\n/g,'<br>')+'</div></article>').join('');
+ const w=window.open('','_blank');if(!w){toast('اسمح بالنوافذ المنبثقة لتصدير PDF.');return;}
+ w.document.write('<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>مراجعاتي - Mahami</title><style>body{font-family:Arial,sans-serif;color:#20211f;padding:32px;line-height:1.9}h1{font-size:26px;margin:0}h2{font-size:19px;margin:24px 0 4px}.subtitle,.date{color:#777;font-size:12px}.note{white-space:pre-wrap;overflow-wrap:anywhere;border-bottom:1px solid #ddd;padding:8px 0 24px}article{break-inside:avoid;margin-bottom:24px}@media print{body{padding:12mm}}</style><h1>دفتر المراجعات</h1><p class="subtitle">Mahami · '+reviews.length+' تدوينة · '+today()+'</p>'+content+'<script>window.onload=()=>window.print()<\\/script></html>');
+ w.document.close();
+}
+
 function render(){
  const d=today(),stats=dayStats(d),v=view;
  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
- const titles={today:'اليوم',week:'الأسبوع',month:'الشهر',log:'سجل الإنجاز',analytics:'الإحصائيات',settings:'الإعدادات'};
+ const titles={today:'اليوم',week:'الأسبوع',month:'الشهر',log:'سجل الإنجاز',analytics:'الإحصائيات',reviews:'المراجعة',settings:'الإعدادات'};
  let html='<header class="page-head"><div><div class="eyebrow">مساحة تطويرك الشخصي</div><h1>'+titles[v]+'</h1><div class="muted">'+fmt(d)+'</div></div><button class="btn btn-light" id="signout">تسجيل الخروج</button></header>';
  if(v==='today'){
   const tasks=tasksFor(d);
@@ -98,6 +115,7 @@ function render(){
   const ds=[...new Set(entries.map(e=>e.entry_date))].sort().reverse();
   html+='<section class="panel"><h2>سجل إنجازك</h2>'+(ds.length?ds.map(date=>{const x=dayStats(date);return '<div class="progress-row"><div class="day-row"><span>'+fmt(date)+'</span><b>'+x.pct+'%</b></div><div class="bar"><i style="width:'+x.pct+'%"></i></div><small class="muted">'+x.done+'/'+x.total+' نقطة مكتملة</small></div>'}).join(''):'<div class="empty">سيظهر سجل إنجازك هنا بعد إضافة المهام.</div>')+'</section>';
  } else if(v==='analytics'){html+=renderAnalytics();}
+ else if(v==='reviews'){html+=renderReviews();}
  else {
   html+='<section class="panel"><h2>إعدادات الحساب</h2><p class="muted">بيانات المهام والتقدم محفوظة في قاعدة بياناتك على Supabase، وتُحمّل عند تسجيل الدخول من أي جهاز.</p><div class="settings-row"><span>البريد الإلكتروني</span><b dir="ltr">'+esc(user?.email||'')+'</b></div><div class="settings-row"><span>بداية الأسبوع</span><select id="week-start"><option value="0" '+(settings.week_start===0?'selected':'')+'>الأحد</option><option value="1" '+(settings.week_start===1?'selected':'')+'>الإثنين</option><option value="6" '+(settings.week_start===6?'selected':'')+'>السبت</option></select></div><div class="settings-row"><span>الهدف اليومي الافتراضي</span><b>'+settings.daily_target+' نقطة</b></div></section>';
  }
@@ -108,6 +126,13 @@ function render(){
  document.querySelectorAll('[data-delete]').forEach(el=>el.addEventListener('click',async()=>{try{await deleteTask(el.dataset.delete);render()}catch(err){toast('تعذر حذف المهمة: '+err.message)}}));
  $('#week-start')?.addEventListener('change',async e=>{const next={user_id:user.id,week_start:+e.target.value,daily_target:settings.daily_target};const {error}=await supabase.from('mahami_settings').upsert(next,{onConflict:'user_id'});if(error)toast(error.message);else{settings.week_start=+e.target.value;render()}});
  $('#goal-form')?.addEventListener('submit',async e=>{e.preventDefault();const target=Number($('#daily-target').value);if(!Number.isInteger(target)||target<1||target>100){toast('اختر هدفًا بين 1 و100 نقطة.');return;}const {error}=await supabase.from('mahami_settings').upsert({user_id:user.id,week_start:settings.week_start,daily_target:target},{onConflict:'user_id'});if(error)toast('تعذر حفظ الهدف: '+error.message);else{settings.daily_target=target;render();toast('تم حفظ هدفك اليومي.')}});
+
+ $('#review-new')?.addEventListener('click',()=>{editingReviewId=null;render();});
+ $('#review-content')?.addEventListener('input',e=>{$('#review-count').textContent=e.target.value.length+' / 30000 حرف';});
+ $('#review-form')?.addEventListener('submit',async e=>{e.preventDefault();const title=$('#review-title').value.trim(),review_date=$('#review-date').value,content=$('#review-content').value;if(!title||!review_date){toast('أدخل عنوان المراجعة والتاريخ.');return;}const payload={user_id:user.id,title,review_date,content,updated_at:new Date().toISOString()};try{let result;if(editingReviewId){result=await supabase.from('mahami_reviews').update(payload).eq('id',editingReviewId).select().single();}else{result=await supabase.from('mahami_reviews').insert(payload).select().single();}if(result.error)throw result.error;if(editingReviewId)reviews=reviews.map(r=>r.id===editingReviewId?result.data:r);else reviews.unshift(result.data);editingReviewId=result.data.id;render();toast('تم حفظ المراجعة في حسابك.');}catch(err){toast('تعذر حفظ المراجعة: '+err.message);}});
+ document.querySelectorAll('[data-review-edit]').forEach(b=>b.addEventListener('click',()=>{editingReviewId=b.dataset.reviewEdit;render();}));
+ document.querySelectorAll('[data-review-delete]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('هل تريد حذف هذه المراجعة نهائيًا؟'))return;const id=b.dataset.reviewDelete;const {error}=await supabase.from('mahami_reviews').delete().eq('id',id);if(error){toast('تعذر الحذف: '+error.message);return;}reviews=reviews.filter(r=>r.id!==id);if(editingReviewId===id)editingReviewId=null;render();toast('تم حذف المراجعة.');}));
+ $('#reviews-pdf')?.addEventListener('click',exportReviewsPdf);
  $('#export-csv')?.addEventListener('click',exportCsv);
  $('#export-pdf')?.addEventListener('click',exportPdf);
 }
