@@ -24,13 +24,18 @@ async function handleAuth(e){e.preventDefault();const email=$('#auth-email').val
 $('#auth-form').addEventListener('submit',handleAuth);
 $('#auth-toggle').addEventListener('click',()=>{authMode=authMode==='login'?'signup':'login';showAuth()});
 async function loadData(){
- const [a,b,c]=await Promise.all([
+ const results=await Promise.all([
   supabase.from('mahami_entries').select('*').order('entry_date',{ascending:false}).order('created_at',{ascending:true}),
   supabase.from('mahami_settings').select('week_start,daily_target').maybeSingle(),
   supabase.from('mahami_reviews').select('*').order('review_date',{ascending:false}).order('updated_at',{ascending:false})
  ]);
- if(a.error)throw a.error; if(b.error)throw b.error; if(c.error)throw c.error;
- entries=a.data||[]; settings={week_start:Number(b.data?.week_start??0),daily_target:Number(b.data?.daily_target??10)}; reviews=c.data||[];
+ const entriesResult=results[0],settingsResult=results[1],reviewsResult=results[2];
+ if(entriesResult.error)throw entriesResult.error;
+ if(settingsResult.error)throw settingsResult.error;
+ if(reviewsResult.error)throw reviewsResult.error;
+ entries=entriesResult.data||[];
+ settings={week_start:Number(settingsResult.data?.week_start??0),daily_target:Number(settingsResult.data?.daily_target??10)};
+ reviews=reviewsResult.data||[];
 }
 async function startApp(){try{await loadData();$('#auth').hidden=true;$('#app').hidden=false;render();}catch(e){showAuth();authMessage('تعذر تحميل بياناتك: '+e.message,true)}}
 supabase.auth.onAuthStateChange(async(_event,session)=>{user=session?.user||null;if(user)await startApp();else showAuth();});
