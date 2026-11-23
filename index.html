@@ -73,44 +73,6 @@
 
 <script>
 (function(){
- function mountMahamiClock(){
-  const head=document.querySelector('#view .page-head');
-  if(!head)return;
-  let meta=head.querySelector('.head-meta');
-  if(!meta){
-   const date=head.querySelector('.muted');
-   if(!date)return;
-   meta=document.createElement('div');
-   meta.className='head-meta';
-   date.parentNode.insertBefore(meta,date);
-   meta.appendChild(date);
-  }
-  if(!meta.querySelector('.live-clock')){
-   const clock=document.createElement('span');
-   clock.className='live-clock';
-   clock.setAttribute('aria-label','الوقت الحالي');
-   clock.innerHTML='<span class="clock-live-dot"></span><span class="clock-digits"><span data-clock-hours>00</span><span class="clock-separator">:</span><span data-clock-minutes>00</span><span class="clock-separator">:</span><span class="clock-seconds" data-clock-seconds>00</span></span><span class="clock-label">الآن</span>';
-   meta.appendChild(clock);
-  }
-  const now=new Date();
-  const parts=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).split(':');
-  const h=meta.querySelector('[data-clock-hours]'),m=meta.querySelector('[data-clock-minutes]'),s=meta.querySelector('[data-clock-seconds]');
-  if(h&&m&&s){
-   h.textContent=parts[0];m.textContent=parts[1];
-   if(s.textContent!==parts[2]){s.textContent=parts[2];s.classList.remove('clock-tick');void s.offsetWidth;s.classList.add('clock-tick');}
-  }
- }
- const start=function(){
-  mountMahamiClock();
-  new MutationObserver(mountMahamiClock).observe(document.getElementById('view')||document.body,{childList:true,subtree:true});
-  setInterval(mountMahamiClock,1000);
- };
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-})();
-</script>
-
-<script>
-(function(){
  function revealAuth(message){
   var auth=document.getElementById('auth'),app=document.getElementById('app'),msg=document.getElementById('auth-msg');
   if(auth&&app&&auth.hidden&&app.hidden){
