@@ -38,7 +38,7 @@ async function loadData(){
  reviews=reviewsResult.data||[];
 
 }
-async function startApp(){try{await loadData();$('#auth').hidden=true;$('#app').hidden=false;render();ensureDailyOccurrences().catch(e=>console.error('Daily recurrence sync failed:',e));}catch(e){console.error('Mahami startup failed:',e);showAuth();authMessage('تعذر تحميل بياناتك: '+e.message,true)}}
+async function startApp(){try{await loadData();$('#auth').hidden=true;$('#app').hidden=false;render();}catch(e){console.error('Mahami startup failed:',e);showAuth();authMessage('تعذر تحميل بياناتك: '+e.message,true)}}
 supabase.auth.onAuthStateChange(async(_event,session)=>{user=session?.user||null;if(user)await startApp();else showAuth();});
 (async()=>{const {data:{session}}=await supabase.auth.getSession();user=session?.user||null;if(user)await startApp();else showAuth()})();
 async function ensureDailyOccurrences(){
