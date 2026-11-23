@@ -37,9 +37,40 @@ async function loadData(){
  settings={week_start:Number(settingsResult.data?.week_start??0),daily_target:Number(settingsResult.data?.daily_target??10)};
  reviews=reviewsResult.data||[];
 }
-async function startApp(){try{await loadData();$('#auth').hidden=true;$('#app').hidden=false;render();}catch(e){showAuth();authMessage('تعذر تحميل بياناتك: '+e.message,true)}}
-supabase.auth.onAuthStateChange(async(_event,session)=>{user=session?.user||null;if(user)await startApp();else showAuth();});
-(async()=>{const {data:{session}}=await supabase.auth.getSession();user=session?.user||null;if(user)await startApp();else showAuth()})();
+let startingUserId=null,loadedUserId=null;
+async function startApp(){
+ if(!user?.id)return;
+ if(startingUserId===user.id)return;
+ startingUserId=user.id;
+ try{
+  await loadData();
+  loadedUserId=user.id;
+  $('#auth').hidden=true;$('#app').hidden=false;render();
+ }catch(e){
+  console.error('Mahami data loading failed:',e);
+  showAuth();authMessage('تعذر تحميل بياناتك: '+(e?.message||String(e)),true);
+ }finally{startingUserId=null;}
+}
+supabase.auth.onAuthStateChange((event,session)=>{
+ const nextUser=session?.user||null;
+ user=nextUser;
+ if(nextUser){
+  if(loadedUserId!==nextUser.id)queueMicrotask(()=>startApp());
+ }else{
+  loadedUserId=null;startingUserId=null;showAuth();
+ }
+});
+(async()=>{
+ try{
+  const {data,error}=await supabase.auth.getSession();
+  if(error)throw error;
+  user=data?.session?.user||null;
+  if(user&&loadedUserId!==user.id)await startApp();else if(!user)showAuth();
+ }catch(e){
+  console.error('Mahami session initialization failed:',e);
+  showAuth();authMessage('تعذر تهيئة جلسة الدخول: '+(e?.message||String(e)),true);
+ }
+})();
 async function addTask(name,difficulty){const {data,error}=await supabase.from('mahami_entries').insert({entry_date:today(),kind:'task',title:name,difficulty,is_completed:false}).select().single();if(error)throw error;entries.push(data);}
 async function toggleTask(id,checked){const {data,error}=await supabase.from('mahami_entries').update({is_completed:checked,completed_at:checked?new Date().toISOString():null}).eq('id',id).select().single();if(error)throw error;entries=entries.map(e=>e.id===id?data:e);}
 async function deleteTask(id){const {error}=await supabase.from('mahami_entries').delete().eq('id',id);if(error)throw error;entries=entries.filter(e=>e.id!==id);}
