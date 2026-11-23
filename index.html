@@ -69,7 +69,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=recurring2"></script>
+  <script type="module" src="js/app.js?v=bootguard1"></script>
 
 <script>
 (function(){
@@ -108,5 +108,27 @@
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+
+<script>
+(function(){
+ function revealAuth(message){
+  var auth=document.getElementById('auth'),app=document.getElementById('app'),msg=document.getElementById('auth-msg');
+  if(auth&&app&&auth.hidden&&app.hidden){
+   auth.hidden=false;
+   if(msg)msg.textContent=message||'تعذر تشغيل التطبيق. أعد تحميل الصفحة، وإذا تكرر الخطأ أرسل صورة الشاشة.';
+  }
+ }
+ window.addEventListener('error',function(e){
+  console.error('Mahami startup error:',e.message,e.filename,e.lineno);
+  revealAuth('حدث خطأ أثناء تحميل التطبيق. أعد تحميل الصفحة؛ وإذا استمر أرسل صورة للرسالة.');
+ });
+ window.addEventListener('unhandledrejection',function(e){
+  console.error('Mahami startup rejection:',e.reason);
+  revealAuth('تعذر الاتصال أو تحميل بيانات الحساب. أعد تحميل الصفحة؛ وإذا استمر أرسل صورة للرسالة.');
+ });
+ setTimeout(function(){revealAuth('استغرق تحميل التطبيق وقتًا أطول من المتوقع. أعد تحميل الصفحة.');},7000);
+})();
+</script>
+
 </body>
 </html>
