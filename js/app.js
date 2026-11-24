@@ -36,6 +36,24 @@ async function loadData(){
  entries=entriesResult.data||[];
  settings={week_start:Number(settingsResult.data?.week_start??0),daily_target:Number(settingsResult.data?.daily_target??10)};
  reviews=reviewsResult.data||[];
+ await materializeDailyTasks();
+}
+async function materializeDailyTasks(){
+ const date=today(), groups=new Map();
+ for(const entry of entries){
+  if(entry.kind!=='task'||entry.recurrence_type!=='daily'||!entry.recurrence_id)continue;
+  const previous=groups.get(entry.recurrence_id);
+  if(!previous||String(entry.entry_date)>String(previous.entry_date))groups.set(entry.recurrence_id,entry);
+ }
+ for(const [seriesId,template] of groups){
+  if(entries.some(e=>e.kind==='task'&&e.entry_date===date&&e.recurrence_id===seriesId))continue;
+  const {data,error}=await supabase.from('mahami_entries').insert({
+   entry_date:date,kind:'task',title:template.title,difficulty:template.difficulty,
+   is_completed:false,recurrence_type:'daily',recurrence_id:seriesId
+  }).select().single();
+  if(error)throw error;
+  entries.push(data);
+ }
 }
 let startingUserId=null,loadedUserId=null;
 async function startApp(){
@@ -71,9 +89,22 @@ supabase.auth.onAuthStateChange((event,session)=>{
   showAuth();authMessage('تعذر تهيئة جلسة الدخول: '+(e?.message||String(e)),true);
  }
 })();
-async function addTask(name,difficulty){const {data,error}=await supabase.from('mahami_entries').insert({entry_date:today(),kind:'task',title:name,difficulty,is_completed:false}).select().single();if(error)throw error;entries.push(data);}
+async function addTask(name,difficulty,repeat='once'){
+ const seriesId=repeat==='daily'?crypto.randomUUID():null;
+ const payload={entry_date:today(),kind:'task',title:name,difficulty,is_completed:false,recurrence_type:repeat,recurrence_id:seriesId};
+ const {data,error}=await supabase.from('mahami_entries').insert(payload).select().single();
+ if(error)throw error;entries.push(data);
+}
 async function toggleTask(id,checked){const {data,error}=await supabase.from('mahami_entries').update({is_completed:checked,completed_at:checked?new Date().toISOString():null}).eq('id',id).select().single();if(error)throw error;entries=entries.map(e=>e.id===id?data:e);}
-async function deleteTask(id){const {error}=await supabase.from('mahami_entries').delete().eq('id',id);if(error)throw error;entries=entries.filter(e=>e.id!==id);}
+async function deleteTask(id){
+ const task=entries.find(e=>e.id===id);
+ if(task?.recurrence_type==='daily'&&task.recurrence_id){
+  const {error:stopError}=await supabase.from('mahami_entries').update({recurrence_type:'once'}).eq('recurrence_id',task.recurrence_id);
+  if(stopError)throw stopError;
+  entries=entries.map(e=>e.recurrence_id===task.recurrence_id?{...e,recurrence_type:'once'}:e);
+ }
+ const {error}=await supabase.from('mahami_entries').delete().eq('id',id);if(error)throw error;entries=entries.filter(e=>e.id!==id);
+}
 function datesFor(period){const now=new Date();if(period==='week'){const offset=(now.getDay()-Number(settings.week_start||0)+7)%7;const start=new Date(now);start.setDate(now.getDate()-offset);return Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return dateKey(d)});}return Array.from({length:now.getDate()},(_,i)=>dateKey(new Date(now.getFullYear(),now.getMonth(),i+1)));}
 function streakCount(){let n=0,d=today();if(dayStats(d).completed===0)d=shiftDate(d,-1);while(dayStats(d).completed>0&&n<365){n++;d=shiftDate(d,-1);}return n;}
 function statCard(label,value,sub=''){return '<div class="stat"><small>'+label+'</small><strong>'+value+'</strong>'+(sub?'<div class="stat-sub">'+sub+'</div>':'')+'</div>';}
@@ -153,7 +184,7 @@ function render(){
  let html='<header class="page-head"><div><div class="eyebrow">مساحة تطويرك الشخصي</div><h1>'+titles[v]+'</h1><div class="head-meta"><span class="muted">'+fmt(d)+'</span><span class="live-clock" aria-label="الوقت الحالي"><span class="clock-live-dot"></span><span class="clock-digits"><span data-clock-hours>00</span><span class="clock-separator">:</span><span data-clock-minutes>00</span><span class="clock-separator">:</span><span class="clock-seconds" data-clock-seconds>00</span></span><span class="clock-label">الآن</span></span></div></div><button class="btn btn-light" id="signout">تسجيل الخروج</button></header>';
  if(v==='today'){
   const tasks=tasksFor(d);
-  html+='<section class="stats"><div class="stat"><small>نسبة إنجاز اليوم</small><strong>'+stats.pct+'<small>%</small></strong><div class="bar"><i style="width:'+stats.pct+'%"></i></div></div><div class="stat"><small>النقاط المكتملة / المستهدفة</small><strong>'+stats.done+' <small>/ '+stats.total+'</small></strong></div><div class="stat"><small>المهام المكتملة</small><strong>'+stats.completed+' <small>/ '+stats.count+'</small></strong></div></section><div class="layout"><section class="panel"><h2>مهام اليوم</h2><form class="task-form" id="add-form"><input id="task-name" placeholder="ما المهمة التي تريد إنجازها؟" required maxlength="200"><select id="task-points"><option value="1">سهلة · 1 نقطة</option><option value="2">متوسطة · 2 نقطتان</option><option value="3">صعبة · 3 نقاط</option></select><button class="btn">إضافة</button></form><div>'+ (tasks.length?tasks.map(t=>'<div class="task '+(t.is_completed?'done':'')+'"><input type="checkbox" data-check="'+t.id+'" '+(t.is_completed?'checked':'')+'><span>'+esc(t.title)+' <small class="muted">· '+t.difficulty+' نقاط</small></span><button data-delete="'+t.id+'" aria-label="حذف">×</button></div>').join(''):'<div class="empty">أضف مهامك لهذا اليوم، وسيُحسب الهدف تلقائيًا من مجموع نقاطها.</div>')+'</div></section><section class="panel"><h2>مؤشر التقدم</h2><div class="score">'+stats.pct+'<small class="muted" style="font-size:18px">%</small></div><div class="bar"><i style="width:'+stats.pct+'%"></i></div><p class="muted">الهدف اليومي = مجموع نقاط جميع مهام اليوم. كلما أكملت مهمة ارتفعت نسبة تقدمك.</p><div class="day-row"><span>النقاط المتبقية</span><b>'+Math.max(0,stats.total-stats.done)+'</b></div></section></div>';
+  html+='<section class="stats"><div class="stat"><small>نسبة إنجاز اليوم</small><strong>'+stats.pct+'<small>%</small></strong><div class="bar"><i style="width:'+stats.pct+'%"></i></div></div><div class="stat"><small>النقاط المكتملة / المستهدفة</small><strong>'+stats.done+' <small>/ '+stats.total+'</small></strong></div><div class="stat"><small>المهام المكتملة</small><strong>'+stats.completed+' <small>/ '+stats.count+'</small></strong></div></section><div class="layout"><section class="panel"><h2>مهام اليوم</h2><form class="task-form" id="add-form"><input id="task-name" placeholder="ما المهمة التي تريد إنجازها؟" required maxlength="200"><select id="task-points"><option value="1">سهلة · 1 نقطة</option><option value="2">متوسطة · 2 نقطتان</option><option value="3">صعبة · 3 نقاط</option></select><select id="task-repeat" aria-label="تكرار المهمة"><option value="once">اليوم فقط</option><option value="daily">يوميًا</option></select><button class="btn">إضافة</button></form><div>'+ (tasks.length?tasks.map(t=>'<div class="task '+(t.is_completed?'done':'')+'"><input type="checkbox" data-check="'+t.id+'" '+(t.is_completed?'checked':'')+'><span>'+esc(t.title)+' <small class="muted">· '+t.difficulty+' نقاط</small></span><button data-delete="'+t.id+'" aria-label="حذف">×</button></div>').join(''):'<div class="empty">أضف مهامك لهذا اليوم، وسيُحسب الهدف تلقائيًا من مجموع نقاطها.</div>')+'</div></section><section class="panel"><h2>مؤشر التقدم</h2><div class="score">'+stats.pct+'<small class="muted" style="font-size:18px">%</small></div><div class="bar"><i style="width:'+stats.pct+'%"></i></div><p class="muted">الهدف اليومي = مجموع نقاط جميع مهام اليوم. كلما أكملت مهمة ارتفعت نسبة تقدمك.</p><div class="day-row"><span>النقاط المتبقية</span><b>'+Math.max(0,stats.total-stats.done)+'</b></div></section></div>';
  } else if(v==='week'||v==='month'){
   const dates=datesFor(v),sum=sumStats(dates),progress=pct(sum.done,sum.total);
   html+='<section class="stats"><div class="stat"><small>نسبة التقدم الإجمالية</small><strong>'+progress+'%</strong><div class="bar"><i style="width:'+progress+'%"></i></div></div><div class="stat"><small>النقاط المنجزة / المستهدفة</small><strong>'+sum.done+' <small>/ '+sum.total+'</small></strong></div><div class="stat"><small>إنجاز المهام</small><strong>'+sum.completed+' <small>/ '+sum.tasks+'</small></strong></div></section><section class="panel"><h2>مؤشر التقدم اليومي</h2>'+dates.map(date=>{const x=dayStats(date);return '<div class="progress-row"><div class="day-row"><span>'+fmt(date)+'</span><b>'+x.pct+'%</b></div><div class="bar"><i style="width:'+x.pct+'%"></i></div><small class="muted">'+x.done+' من '+x.total+' نقطة · '+x.completed+'/'+x.count+' مهام</small></div>'}).join('')+'</section>';
@@ -167,7 +198,7 @@ function render(){
  }
  $('#view').innerHTML=html;
  $('#signout')?.addEventListener('click',async()=>{await supabase.auth.signOut();});
- $('#add-form')?.addEventListener('submit',async e=>{e.preventDefault();const name=$('#task-name').value.trim();if(!name)return;try{await addTask(name,+$('#task-points').value);render();toast('تمت إضافة المهمة وحساب الهدف تلقائيًا.')}catch(err){toast('تعذر الحفظ: '+err.message)}});
+ $('#add-form')?.addEventListener('submit',async e=>{e.preventDefault();const name=$('#task-name').value.trim();if(!name)return;try{await addTask(name,+$('#task-points').value,$('#task-repeat').value);render();toast($('#task-repeat').value==='daily'?'تمت إضافة المهمة اليومية.':'تمت إضافة مهمة اليوم فقط.')}catch(err){toast('تعذر الحفظ: '+err.message)}});
  document.querySelectorAll('[data-check]').forEach(el=>el.addEventListener('change',async()=>{try{await toggleTask(el.dataset.check,el.checked);render()}catch(err){toast('تعذر تحديث المهمة: '+err.message)}}));
  document.querySelectorAll('[data-delete]').forEach(el=>el.addEventListener('click',async()=>{try{await deleteTask(el.dataset.delete);render()}catch(err){toast('تعذر حذف المهمة: '+err.message)}}));
  $('#week-start')?.addEventListener('change',async e=>{const next={user_id:user.id,week_start:+e.target.value,daily_target:settings.daily_target};const {error}=await supabase.from('mahami_settings').upsert(next,{onConflict:'user_id'});if(error)toast(error.message);else{settings.week_start=+e.target.value;render()}});
