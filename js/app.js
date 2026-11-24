@@ -144,7 +144,7 @@ function updateLiveClock(){
  h.textContent=time[0];m.textContent=time[1];
  if(s.textContent!==time[2]){s.textContent=time[2];s.classList.remove('clock-tick');void s.offsetWidth;s.classList.add('clock-tick');}
 }
-updateLiveClock();setInterval(updateLiveClock,250);
+updateLiveClock();setInterval(updateLiveClock,1000);
 
 function render(){
  const d=today(),stats=dayStats(d),v=view;
