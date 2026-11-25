@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261126a">
+  <link rel="stylesheet" href="css/style.css?v=20261126b">
   <script>
     try { var th = localStorage.getItem('mahami-theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
   </script>
@@ -84,7 +84,7 @@
     } catch (firstError) {
       await loadSupabase('https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js');
     }
-    await import('./js/app.js?v=20261126a');
+    await import('./js/app.js?v=20261126b');
   } catch (error) {
     console.error('Mahami startup failed:', error);
     if (message) {
