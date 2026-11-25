@@ -116,7 +116,7 @@ function insightsMarkup(current,previous,days){
   if(delta>0)notes.push('نقاطك ارتفعت بمقدار '+delta+' نقطة مقارنة بالفترة السابقة. استمر على هذا النسق.');
   else if(delta<0)notes.push('إنجازك أقل بمقدار '+Math.abs(delta)+' نقطة من الفترة السابقة. جرّب تقسيم المهام الكبيرة إلى خطوات أصغر.');
   else notes.push('مستوى نقاطك مماثل للفترة السابقة. يمكنك رفعه بإضافة هدف يومي واقعي.');
-  notes.push('أنجزت '+rate+'% من المهام المسجلة في آخر 7 أيام.');
+  notes.push('أنجزت '+rate+'% من المهام المسجلة في آخر 60 يومًا.');
   const best=days.map(d=>({d,s:dayStats(d)})).sort((a,b)=>b.s.done-a.s.done)[0];
   if(best&&best.s.done>0)notes.push('أفضل يوم في آخر أسبوع كان '+fmt(best.d)+' بـ '+best.s.done+' نقطة.');
   const missed=days.filter(d=>dayStats(d).count>0&&dayStats(d).completed===0).length;
