@@ -149,29 +149,42 @@ function renderTrendChart(days){
  const dots=pts.filter((p,i)=>i%5===0||i===pts.length-1).map(p=>'<circle class="trend-dot" cx="'+p.x+'" cy="'+p.y+'" r="3.5"><title>'+esc(fmt(p.d)+': '+p.v+' نقطة')+'</title></circle>').join('');
  return '<div class="trend-chart"><div class="trend-legend"><span><i></i> النقاط المنجزة يوميًا</span><small>كل نقطة تمثل يومًا واحدًا · مرّر على النقاط لعرض التفاصيل</small></div><svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="منحنى النقاط المنجزة خلال آخر 60 يومًا">'+grid+'<path class="trend-area" d="'+area+'"/><path class="trend-line" d="'+line+'"/>'+dots+labels+'</svg></div>';
 }
+let analyticsDays=60;
+function activityPattern(days){
+ const active=days.map(d=>dayStats(d).completed>0),count=active.filter(Boolean).length;
+ let bestRun=0,run=0,longestGap=0,gap=0;
+ for(const yes of active){if(yes){run++;gap=0;bestRun=Math.max(bestRun,run);}else{run=0;gap++;longestGap=Math.max(longestGap,gap);}}
+ let current=0;for(let i=active.length-1;i>=0&&active[i];i--)current++;
+ const breaks=active.filter(x=>!x).length;
+ return {count,consistency:pct(count,days.length),bestRun,current,longestGap,breaks};
+}
 function renderAnalytics(){
- const days=lastDays(60),previous=lastDays(60,shiftDate(today(),-60)),cur=sumStats(days),prev=sumStats(previous),target=Number(settings.daily_target)||10;
- const active=days.filter(d=>dayStats(d).count>0).length,avg=cur.done/60,best=days.map(d=>({d,s:dayStats(d)})).sort((a,b)=>b.s.done-a.s.done)[0];
+ const n=analyticsDays,days=lastDays(n),previous=lastDays(n,shiftDate(today(),-n)),cur=sumStats(days),prev=sumStats(previous),target=Number(settings.daily_target)||10;
+ const pattern=activityPattern(days),activeDays=days.filter(d=>dayStats(d).count>0).length;
+ const avg=Math.round(cur.done/n*10)/10,best=days.map(d=>({d,s:dayStats(d)})).sort((a,b)=>b.s.done-a.s.done)[0];
  const rate=pct(cur.completed,cur.tasks),change=cur.done-prev.done,changePct=prev.done?Math.round(change/prev.done*100):null;
- const dailyAverage=active?Math.round(cur.done/active*10)/10:0;
- const completionDays=days.filter(d=>dayStats(d).completed>0).length;
- const perfectDays=days.filter(d=>dayStats(d).count>0&&dayStats(d).completed===dayStats(d).count).length;
+ const dailyAverage=activeDays?Math.round(cur.done/activeDays*10)/10:0;
+ const completionDays=pattern.count,perfectDays=days.filter(d=>dayStats(d).count>0&&dayStats(d).completed===dayStats(d).count).length;
  const maxDay=Math.max(1,...days.map(d=>dayStats(d).done));
  const topDays=days.map(d=>({d,s:dayStats(d)})).filter(x=>x.s.done>0).sort((a,b)=>b.s.done-a.s.done).slice(0,3);
  const topMarkup=topDays.length?topDays.map((x,i)=>'<div class="top-day"><b>'+(i+1)+'</b><span>'+esc(fmt(x.d))+'</span><strong>'+x.s.done+' نقطة</strong><small>'+x.s.completed+'/'+x.s.count+' مهام</small></div>').join(''):'<p class="muted">ستظهر أفضل أيامك هنا بعد تسجيل الإنجازات.</p>';
  const changeText=change>0?'+'+change:String(change);
- return '<section class="stats analytics-stats">'+
- statCard('النقاط خلال 60 يومًا',cur.done+' نقطة',dailyAverage+' نقطة لكل يوم نشط')+
+ const rangeName={7:'آخر أسبوع',14:'آخر أسبوعين',30:'آخر شهر',60:'آخر 60 يومًا',90:'آخر 90 يومًا'}[n]||('آخر '+n+' يومًا');
+ const rangeOptions=[[7,'آخر أسبوع'],[14,'آخر أسبوعين'],[30,'آخر شهر'],[60,'آخر 60 يومًا'],[90,'آخر 90 يومًا']].map(([v,label])=>'<option value="'+v+'" '+(n===v?'selected':'')+'>'+label+'</option>').join('');
+ return '<section class="panel analytics-range-panel"><div><h2>مستوى النشاط</h2><p class="muted">اختر الفترة التي تريد تحليل أدائك خلالها.</p></div><label class="analytics-range-label" for="analytics-range">الفترة الزمنية<select id="analytics-range">'+rangeOptions+'</select></label></section>'+
+ '<section class="stats analytics-stats">'+
+ statCard('النقاط المنجزة',cur.done+' نقطة',dailyAverage+' نقطة لكل يوم أُضيفت فيه مهام')+
  statCard('معدل إكمال المهام',rate+'%',cur.completed+' من '+cur.tasks+' مهمة')+
- statCard('أيام النشاط',completionDays+' / 60',active+' يومًا أُضيفت فيها مهام')+
- statCard('متوسط الإنجاز اليومي',Math.round(avg*10)/10+' نقطة','محسوبًا على كامل الفترة')+
+ statCard('أيام الاستمرار',completionDays+' / '+n,pattern.consistency+'% من أيام الفترة')+
+ statCard('متوسط النقاط اليومي',avg+' نقطة','باحتساب أيام الانقطاع أيضًا')+
  '</section>'+
- '<section class="panel analytics-panel trend-panel"><div class="section-heading"><div><h2>منحنى نشاطك · آخر 60 يومًا</h2><p class="muted">تابع صعود وهبوط إنجازك يومًا بعد يوم، واكتشف اتجاه أدائك.</p></div><span class="trend-period">60 يومًا</span></div>'+renderTrendChart(days)+'<div class="trend-foot"><span>أعلى إنجاز: <b>'+maxDay+' نقطة</b></span><span>الهدف اليومي الحالي: <b>'+target+' نقطة</b></span></div></section>'+
- '<div class="analytics-grid"><section class="panel"><h2>مقارنة بالفترة السابقة</h2><p class="muted">آخر 60 يومًا مقابل الـ60 يومًا التي سبقتها</p><div class="compare-grid"><div><small class="muted">الفترة الحالية</small><strong>'+cur.done+' نقطة</strong><span>'+cur.completed+'/'+cur.tasks+' مهام مكتملة</span></div><div><small class="muted">الفترة السابقة</small><strong>'+prev.done+' نقطة</strong><span>'+prev.completed+'/'+prev.tasks+' مهام مكتملة</span></div></div><div class="compare-change '+(change>=0?'positive':'negative')+'">'+(change>=0?'تحسن ':'تراجع ')+Math.abs(change)+' نقطة '+(changePct===null?'':'('+changePct+'%)')+'</div></section><section class="panel"><h2>جودة الالتزام</h2><div class="quality-metrics"><div><strong>'+completionDays+'</strong><span>أيام أنجزت فيها</span></div><div><strong>'+perfectDays+'</strong><span>أيام أكملت كل مهامها</span></div><div><strong>'+streakCount()+'</strong><span>سلسلة الالتزام الحالية</span></div></div><p class="muted">أفضل يوم: '+(best&&best.s.done>0?esc(fmt(best.d))+' · '+best.s.done+' نقطة':'لا توجد إنجازات مسجلة بعد')+'</p></section></div>'+
+ '<section class="panel analytics-panel trend-panel"><div class="section-heading"><div><h2>منحنى النشاط · '+rangeName+'</h2><p class="muted">تغير النقاط المنجزة يوميًا خلال الفترة المحددة.</p></div><span class="trend-period">'+n+' يومًا</span></div>'+renderTrendChart(days)+'<div class="trend-foot"><span>أعلى إنجاز: <b>'+maxDay+' نقطة</b></span><span>الهدف اليومي: <b>'+target+' نقطة</b></span></div></section>'+
+ '<div class="analytics-grid"><section class="panel"><h2>الاستمرار والتقطع</h2><p class="muted">قياس انتظامك الفعلي، وليس عدد المهام فقط.</p><div class="quality-metrics"><div><strong>'+pattern.current+'</strong><span>أيام متتالية حاليًا</span></div><div><strong>'+pattern.bestRun+'</strong><span>أطول سلسلة في الفترة</span></div><div><strong>'+pattern.longestGap+'</strong><span>أطول انقطاع بالأيام</span></div></div><div class="consistency-track"><div><span>الانتظام</span><b>'+pattern.consistency+'%</b></div><div class="bar"><i style="width:'+pattern.consistency+'%"></i></div></div><p class="muted">أيام النشاط: '+pattern.count+' · أيام دون إنجاز: '+pattern.breaks+' · أيام أُضيفت فيها مهام: '+activeDays+'</p></section>'+
+ '<section class="panel"><h2>جودة الإنجاز</h2><div class="quality-metrics"><div><strong>'+perfectDays+'</strong><span>أيام مكتملة بالكامل</span></div><div><strong>'+rate+'%</strong><span>نسبة إكمال المهام</span></div><div><strong>'+streakCount()+'</strong><span>السلسلة الحالية الإجمالية</span></div></div><p class="muted">أفضل يوم: '+(best&&best.s.done>0?esc(fmt(best.d))+' · '+best.s.done+' نقطة':'لا توجد إنجازات مسجلة بعد')+'</p></section></div>'+
  '<div class="analytics-grid"><section class="panel"><h2>أفضل 3 أيام</h2><p class="muted">الأيام الأعلى من حيث النقاط المنجزة</p><div class="top-days">'+topMarkup+'</div></section><section class="panel"><h2>الهدف اليومي</h2><div class="goal-big">'+target+' <small>نقطة</small></div><p class="muted">أنجزت اليوم '+dayStats(today()).done+' من '+target+' نقطة مستهدفة.</p><div class="bar"><i style="width:'+pct(dayStats(today()).done,target)+'%"></i></div><form id="goal-form" class="goal-form"><label for="daily-target">تعديل الهدف اليومي</label><div><input id="daily-target" type="number" min="1" max="100" step="1" value="'+target+'" required><button class="btn" type="submit">حفظ الهدف</button></div></form></section></div>'+
  '<section class="panel analytics-panel"><h2>خريطة النشاط السنوية</h2><p class="muted">نظرة سريعة على انتظامك خلال آخر 12 شهرًا</p>'+renderHeatmap()+'</section>'+
  '<section class="panel analytics-panel"><h2>قراءة ذكية لأدائك</h2>'+insightsMarkup(cur,prev,days)+'</section>'+
- '<section class="export-panel"><div><h2>تقرير النشاط الكامل</h2><p class="muted">تصدير سجل المهام والإحصائيات لآخر 60 يومًا بصيغة CSV أو PDF.</p></div><div class="export-actions"><button class="btn btn-light" id="export-csv">تصدير CSV</button><button class="btn" id="export-pdf">تصدير PDF</button></div></section>';
+ '<section class="export-panel"><div><h2>تقرير النشاط الكامل</h2><p class="muted">تصدير سجل المهام والإحصائيات للفترة المحددة: '+rangeName+'.</p></div><div class="export-actions"><button class="btn btn-light" id="export-csv">تصدير CSV</button><button class="btn" id="export-pdf">تصدير PDF</button></div></section>';
 }
 
 function reviewDateLabel(d){return new Date(d+'T12:00:00').toLocaleDateString('ar-DZ',{day:'numeric',month:'long',year:'numeric'});}
@@ -224,6 +237,7 @@ function render(){
  document.querySelectorAll('[data-check]').forEach(el=>el.addEventListener('change',async()=>{try{await toggleTask(el.dataset.check,el.checked);render()}catch(err){toast('تعذر تحديث المهمة: '+err.message)}}));
  document.querySelectorAll('[data-delete]').forEach(el=>el.addEventListener('click',async()=>{try{await deleteTask(el.dataset.delete);render()}catch(err){toast('تعذر حذف المهمة: '+err.message)}}));
  $('#week-start')?.addEventListener('change',async e=>{const next={user_id:user.id,week_start:+e.target.value,daily_target:settings.daily_target};const {error}=await supabase.from('mahami_settings').upsert(next,{onConflict:'user_id'});if(error)toast(error.message);else{settings.week_start=+e.target.value;render()}});
+ $('#analytics-range')?.addEventListener('change',e=>{analyticsDays=Number(e.target.value)||60;render();});
  $('#goal-form')?.addEventListener('submit',async e=>{e.preventDefault();const target=Number($('#daily-target').value);if(!Number.isInteger(target)||target<1||target>100){toast('اختر هدفًا بين 1 و100 نقطة.');return;}const {error}=await supabase.from('mahami_settings').upsert({user_id:user.id,week_start:settings.week_start,daily_target:target},{onConflict:'user_id'});if(error)toast('تعذر حفظ الهدف: '+error.message);else{settings.daily_target=target;render();toast('تم حفظ هدفك اليومي.')}});
 
  $('#review-new')?.addEventListener('click',()=>{editingReviewId=null;render();});
