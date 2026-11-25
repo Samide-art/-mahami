@@ -93,3 +93,12 @@
 .top-day>strong{font-size:13px}
 .top-day>small{grid-column:2/-1;color:#888;font-size:11px}
 @media(max-width:600px){.trend-legend{align-items:flex-start;flex-direction:column}.trend-foot{flex-direction:column}.quality-metrics{gap:6px}.quality-metrics>div{padding:11px 5px}.quality-metrics strong{font-size:21px}.top-day{grid-template-columns:26px 1fr auto}}
+
+/* Selectable analytics period and consistency indicators */
+.analytics-range-panel{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.analytics-range-label{display:flex;align-items:center;gap:10px;color:#656575;font-size:13px;font-weight:700}
+.analytics-range-label select{min-width:150px;border:1px solid #e2e2ed;background:#fff;border-radius:10px;padding:10px 34px 10px 12px;color:#29293a;font:inherit}
+.consistency-track{margin:14px 0}
+.consistency-track>div:first-child{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}
+.consistency-track b{color:#5556b8}
+@media(max-width:600px){.analytics-range-panel{align-items:stretch}.analytics-range-label{align-items:stretch;flex-direction:column}.analytics-range-label select{width:100%}}
