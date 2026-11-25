@@ -66,3 +66,30 @@
 @keyframes clock-blink{50%{opacity:.35}}
 @keyframes clock-second-change{0%{transform:translateY(-4px);opacity:.35}100%{transform:translateY(0);opacity:1}}
 @media(max-width:760px){.head-meta{gap:8px}.live-clock{padding:6px 9px}.clock-digits{font-size:14px}}
+
+/* 60-day analytics trend */
+.trend-panel{overflow:hidden}
+.trend-period{border-radius:999px;background:#f1f1ff;color:#5556b8;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap}
+.trend-chart{width:100%;margin-top:12px}
+.trend-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.trend-legend{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 12px;color:#555;font-size:13px}
+.trend-legend span{display:flex;align-items:center;gap:8px;font-weight:700}
+.trend-legend i{width:18px;height:4px;border-radius:8px;background:#6667d9;display:inline-block}
+.trend-legend small,.trend-axis{color:#92929c;font-size:11px}
+.trend-grid{stroke:#ececf2;stroke-width:1;stroke-dasharray:3 5}
+.trend-area{fill:rgba(102,103,217,.12)}
+.trend-line{fill:none;stroke:#6667d9;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.trend-dot{fill:#fff;stroke:#6667d9;stroke-width:2}
+.trend-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #f0f0f3;padding-top:12px;margin-top:4px;color:#777;font-size:12px}
+.trend-foot b{color:#29293a}
+.quality-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.quality-metrics>div{background:#f8f8fb;border-radius:12px;padding:14px 10px;text-align:center}
+.quality-metrics strong{display:block;font-size:25px;color:#30304b}
+.quality-metrics span{display:block;font-size:11px;color:#777;margin-top:5px}
+.top-days{display:grid;gap:10px;margin-top:16px}
+.top-day{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee}
+.top-day>b{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#f0f0ff;color:#5556b8}
+.top-day>span{font-size:13px}
+.top-day>strong{font-size:13px}
+.top-day>small{grid-column:2/-1;color:#888;font-size:11px}
+@media(max-width:600px){.trend-legend{align-items:flex-start;flex-direction:column}.trend-foot{flex-direction:column}.quality-metrics{gap:6px}.quality-metrics>div{padding:11px 5px}.quality-metrics strong{font-size:21px}.top-day{grid-template-columns:26px 1fr auto}}
